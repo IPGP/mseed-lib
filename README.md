@@ -1,5 +1,4 @@
 # mseed-matlab
-Matlab codes to read and write miniseed files
 
 The Standard for the Exchange of Earthquake Data (SEED) is an
 international standard format for the exchange of digital seismological
@@ -16,6 +15,11 @@ The purpose of these functions is to read and write miniSEED data files
 directly from Matlab, avoiding intermediate format conversion (like SAC
 or other formats for which many functions exist), having a full control
 on headers and formats.
+
+The function has the particularity to be respectful of the SEED standard,
+thus should be able to read ANY miniSEED file: all known encoding formats,
+multiplexed channels, data sampling, mixed encoding formats, mixed block 
+sizes and even mixed endianness (it appends!).
 
 ## rdmseed.m: reading miniSEED file
 
