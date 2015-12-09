@@ -17,7 +17,7 @@ directly from Matlab, avoiding intermediate format conversion (like SAC
 or other formats for which many functions exist), having a full control
 on headers and formats.
 
-rdmseed.m: reading miniSEED file
+## rdmseed.m: reading miniSEED file
 
 Each data record is imported into a structure array, allowing to adress
 data blocks and header fields individually (useful for multi-channel
@@ -52,7 +52,7 @@ times faster than a 'C-like' loops coding... which is still 10 times
 slower than the same C-compiled program, but, well, this is the
 Matlab's other side of the coin!
 
-mkmseed.m: writing miniSEED file
+## mkmseed.m: writing miniSEED file
 
 The function allows to export a data vector D to miniSEED file, giving
 origin date and time (for monotonic data) and sampling rate, or a time
