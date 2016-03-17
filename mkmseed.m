@@ -1,6 +1,6 @@
 function mkmseed(f,d,varargin)
 %MKMSEED Write data in miniSEED file format.
-%	MKMSEED(FILENAME,D,T0,FS) writes miniSEED file FILENAME from stritl 
+%	MKMSEED(FILENAME,D,T0,FS) writes miniSEED file FILENAME from strictly 
 %	monotonic data vector D, time origin T0 (a scalar in Matlab datenum
 %	compatible format) and sampling rate FS (in Hz). Encoding format will 
 %	depend on D variable class (see below).
@@ -71,8 +71,12 @@ function mkmseed(f,d,varargin)
 %		  Instrument Center, http://www.passcal.nmt.edu/
 
 %	History:
+%	[2015-01-26]
+%		- fixes an issue with time sampling in T0,FS mode
+%
 %	[2014-05-28]
 %		- adds possibility to force block headers parameters
+%
 %	[2014-05-15]
 %		- bug correction for sample rate expressed in seconds/sample
 %
