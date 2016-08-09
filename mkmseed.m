@@ -59,7 +59,7 @@ function mkmseed(f,d,varargin)
 %	Author: François Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2011-10-19
-%	Updated: 2015-01-26
+%	Updated: 2016-05-16
 %
 %	Acknowledgments:
 %		Florent Brenguier, Julien Vergoz, Constanza Pardo, Sylvie Barbier.
@@ -101,7 +101,7 @@ function mkmseed(f,d,varargin)
 %		- accepts void location code (thanks to Julien Vergoz)
 %
 %
-%	Copyright (c) 2014, François Beauducel, covered by BSD License.
+%	Copyright (c) 2016, François Beauducel, covered by BSD License.
 %	All rights reserved.
 %
 %	Redistribution and use in source and binary forms, with or without 
@@ -176,6 +176,7 @@ if numel(t) > 1
 end
 
 if nargin > 3 && ~isempty(varargin{2})
+	% syntax rdmseed(F,D,T,HEADER)
 	if isstruct(varargin{2})
 		H = varargin{2};
 	else
@@ -211,11 +212,15 @@ end
 % ! IMPORTANT NOTE ON ENCODING FORMAT ARGUMENT ! 
 % For very specific usage (data transform), EF argument accepts a 2-element
 % vector: EF(1) is used to encode the data, and optionaly, EF(2) is used to
-% fill the blockette 1000. These 2 value must be the same or may lead to 
-% corrupted data... for expert only.
+% fill the blockette 1000 header value. These 2 value must be the same or 
+% may lead to corrupted data... Another option is to set EF(2) to 0, then 
+% original blockette 1000 value is used (from HEADER argument), while data 
+% are still encoded as EF(1). !! For expert only !!
 if nargin > 4 && ~isempty(varargin{3})
 	ef = varargin{3};
-	if ~isnumeric(ef) || numel(ef) > 2 || any(~ismember(ef,[1,3,4,5,10,11,13,14]))
+	if ~isnumeric(ef) || numel(ef) > 2 ...
+			|| ~ismember(ef(1),[1,3,4,5,10,11,13,14]) ...
+			|| (numel(ef)==2 && ~ismember(ef(2),[0,1,3,4,5,10,11,13,14]))
 		error('Argument EF not valid. See documentation.');
 	end
 	% EF specified: converts D to correct class
@@ -334,6 +339,9 @@ while n <= length(d)
 	X.TimeCorrection = 0;
 	if isfield(H,'TimeCorrection')
 		X.TimeCorrection = H(kh).TimeCorrection;
+	end
+	if numel(ef)==2 && ef(2)==0 && isfield(H(kh),'BLOCKETTES') && isfield(H(kh).BLOCKETTES,'B1000')
+		X.EncodingFormat = H(kh).BLOCKETTES.B1000.EncodingFormat;
 	end
 	
 	nn = write_data_record(fid,X,ef,rl);
@@ -464,7 +472,11 @@ fwrite(fid,48,'uint16');	% Offset First Blockette
 % blockette 1000 (8 bytes)
 fwrite(fid,1000,'uint16');	% Blockette type
 fwrite(fid,0,'uint16');		% Offset Next Blockette
-fwrite(fid,ef(end),'uint8');		% Encoding Format
+if numel(ef)==2 && ef(2)==0 && isfield(X,'EncodingFormat')
+	fwrite(fid,X.EncodingFormat,'uint8');		% Original Encoding Format
+else
+	fwrite(fid,ef(end),'uint8');		% Forced Encoding Format
+end
 fwrite(fid,1,'uint8');		% Word Order (big-endian)
 fwrite(fid,round(log(rl)/log(2)),'uint8');	% Data Record Length
 fwrite(fid,0,'uint8');		% Reserved
@@ -483,11 +495,8 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function d = bitjoin(x,n,b)
-% bitjoin(X,N,B) joins the N-bit array X into one unsigned B-bit number
-%	X must be unsigned integer class
-%	B must be >= N*length(X)
-% (This is the reverse function of bitsplit in RDMSEED)
+function d = bitjoin(x,n)
+% bitjoin(X,N,B) joins the N-bit array X into one unsigned 32-bit number
 
 d = uint32(sum(flipud(x(:)).*2.^(0:n:(length(x)-1)*n)'));
 
