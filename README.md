@@ -70,4 +70,10 @@ float/double, Steim-1/2, Geoscope 16/3-4). If not, it will depend on
 the class of variable D. Binary file is big-endian coded, and default
 record length is 4096 bytes (this may be changed using input argument).
 
+![](rdmseed_example.png)
+
+## Author
+**François Beauducel**, IPGP, [beaudu](https://github.com/beaudu), beauducel@ipgp.fr 
+
+## Documentation
 Type "doc rdmseed" or "doc mkmseed" for detailed usage.
