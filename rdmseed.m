@@ -48,7 +48,10 @@ function varargout = rdmseed(varargin)
 %	[...] = RDMSEED(F,...,'be') forces big-endian reading (overwrites the
 %	automatic detection of endianness coding, which fails in some cases).
 %
-%	[...] = RDMSEED(F,...,'notc') disable time correction.
+%	[...] = RDMSEED(F,...,'notc') disables time correction.
+%
+%	[...] = RDMSEED(F,...,'nullhead') ignores null header (some files may
+%	start with a series of null bytes).
 %
 %	[...] = RDMSEED(F,...,'plot') forces the plot with output arguments.
 %
@@ -108,6 +111,8 @@ function varargout = rdmseed(varargin)
 %		Steim J.M. (1994), 'Steim' Compression, Quanterra Inc.
 
 %	History:
+%		[2017-11-21]
+%			- adds option 'nullhead' to bypass null bytes header.
 %		[2015-01-05]
 %			- fixes a bug when a data block has 0 sample declared in header
 %			  but some data in the record (STEIM-1/2 coding).
@@ -170,7 +175,7 @@ function varargout = rdmseed(varargin)
 %			  input arguments (like Seismic Handler output files).
 %			- Uses warning() function instead of fprintf().
 %
-%	Copyright (c) 2014, François Beauducel, covered by BSD License.
+%	Copyright (c) 2017, François Beauducel, covered by BSD License.
 %	All rights reserved.
 %
 %	Redistribution and use in source and binary forms, with or without 
@@ -211,6 +216,7 @@ wo = 1;			% word order default
 rl = 2^12;		% record length default
 force = 0;		% force input argument over blockette 1000 (UNDOCUMENTED)
 notc = 0;		% force no time correction (over ActivityFlags)
+nullhead = 0;	% allow null bytes before header
 
 if nargin < 1
 	[filename,pathname] = uigetfile('*','Please select a miniSEED file...');
@@ -230,8 +236,10 @@ if nargin > 1
 	forcebe = any(strcmpi(varargin,'be'));
 	notc = any(strcmpi(varargin,'notc'));
 	force = any(strcmpi(varargin,'force'));
+	nullhead = any(strcmpi(varargin,'nullhead'));
 end
-nargs = (makeplot>0) + (verbose>0) + (forcebe>0) + (notc>0) + (force>0);
+nargs = (makeplot>0) + (verbose>0) + (forcebe>0) + (notc>0) + (force>0) ...
+	 + (nullhead>0);
 
 
 if nargin > (1 + nargs)
@@ -266,21 +274,45 @@ max_channel_label = 6;	% max. number of channels for y-labels
 % file is opened in Big-Endian encoding (this is encouraged by SEED)
 fid = fopen(f,'rb','ieee-be');
 le = 0;
+offset = 0;
 
 % --- tests if the header is mini-SEED
 % the 7th character must be one of the "data header/quality indicator", usually 'D'
 header = fread(fid,20,'*char');
 if ~ismember(header(7),'DRMQ')
 	if ismember(header(7),'VAST')
-		s = ' (seems to be a SEED Volume)';
+		error('File seems to be a SEED Volume. Cannot read it.');
 	else
-		s = '';
+		if header(1)==0
+			if nullhead
+				if verbose
+					fprintf('Null header option: bypassing...');
+				end
+				c = 0;
+				fseek(fid,0,'bof');
+				while c==0
+					c = fread(fid,1,'*char');
+					offset = offset + 1;
+				end
+				if verbose
+					fprintf(' %d null bytes.\n',offset);
+				end
+				header = fread(fid,6,'*char');
+				if ~ismember(header(6),'DRMQ')
+					error('File is not in mini-SEED format. Cannot read it.');
+				else
+					offset = offset - 1;
+				end
+			else
+				error('File starts with null bytes... if you believe it is still a miniseed file, try the ''nullhead'' option.');
+			end
+		else
+			error('File is not in mini-SEED format. Cannot read it.');
+		end
 	end
-	error('File is not in mini-SEED format%s. Cannot read it.',s);
 end
 
 i = 1;
-offset = 0;
 
 while offset >= 0
 	X(i) = read_data_record;

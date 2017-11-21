@@ -59,7 +59,7 @@ function mkmseed(f,d,varargin)
 %	Author: François Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2011-10-19
-%	Updated: 2016-05-16
+%	Updated: 2017-05-13
 %
 %	Acknowledgments:
 %		Florent Brenguier, Julien Vergoz, Constanza Pardo, Sylvie Barbier.
@@ -71,6 +71,9 @@ function mkmseed(f,d,varargin)
 %		  Instrument Center, http://www.passcal.nmt.edu/
 
 %	History:
+%	[2017-05-13]
+%		- fixes a possible problem with LC length and adds validity tests on RF 
+%
 %	[2015-01-26]
 %		- fixes an issue with time sampling in T0,FS mode
 %
@@ -147,7 +150,7 @@ else
 	% extract data channel identifiers
 	X.NetworkCode = sprintf('%-2s',upper(cc{1}(1:min(length(cc{1}),2))));
 	X.StationIdentifierCode = sprintf('%-5s',upper(cc{2}(1:min(length(cc{2}),5))));
-	X.LocationIdentifier = sprintf('%-2s',cc{3}(1:min(length(cc{3}),3)));
+	X.LocationIdentifier = sprintf('%-2s',cc{3}(1:min(length(cc{3}),2)));
 	X.ChannelIdentifier = sprintf('%-3s',cc{4}(1:min(length(cc{4}),4)));
 end
 
@@ -277,6 +280,10 @@ case 11
 	nbs = ((rl/64-1)*15 - 1)*7;	% Steim-2 maximum compression is seven 4-bit per longword
 case {13,14}
 	nbs = (rl - 64)/2;	% Geoscope gain ranged is 16-bit per sample
+end
+
+if nbs > 2^16
+	error('Argument RL (%d) is too large for this encoding format (%d).',rl,ef)
 end
 
 doy0 = 0;
