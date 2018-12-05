@@ -59,7 +59,7 @@ function mkmseed(f,d,varargin)
 %	Author: François Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2011-10-19
-%	Updated: 2017-05-13
+%	Updated: 2018-12-05
 %
 %	Acknowledgments:
 %		Florent Brenguier, Julien Vergoz, Constanza Pardo, Sylvie Barbier.
@@ -71,6 +71,9 @@ function mkmseed(f,d,varargin)
 %		  Instrument Center, http://www.passcal.nmt.edu/
 
 %	History:
+%	[2018-12-05]
+%		- allows any t0 (fix a bug when t0(1) = 0)
+%
 %	[2017-05-13]
 %		- fixes a possible problem with LC length and adds validity tests on RF 
 %
@@ -286,7 +289,7 @@ if nbs > 2^16
 	error('Argument RL (%d) is too large for this encoding format (%d).',rl,ef)
 end
 
-doy0 = 0;
+doy0 = -1;
 n = 1; % index for the data vector
 r = 1; % index for data record blocks
 while n <= length(d)
@@ -301,7 +304,7 @@ while n <= length(d)
 
 	% open a new file
 	if doy ~= doy0
-		if doy0 ~= 0
+		if doy0 > 0
 			fclose(fid);
 			fprintf(' done.\n');
 		end
