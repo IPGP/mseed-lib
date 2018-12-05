@@ -73,6 +73,7 @@ function mkmseed(f,d,varargin)
 %	History:
 %	[2018-12-05]
 %		- allows any t0 (fix a bug when t0(1) = 0)
+%		- uses mode to guess sampling frequency (without FS argument)
 %
 %	[2017-05-13]
 %		- fixes a possible problem with LC length and adds validity tests on RF 
@@ -195,9 +196,9 @@ end
 if ~exist('H','var') || ~isfield(H,'SampleRate')
 	if numel(t) > 1
 		% guess sampling rate from vector T
-		k = find(dt>0);
-		if ~isempty(k)
-			H.SampleRate = 1/(86400*dt(k(1)));
+		mdt = mode(dt); % most frequent time interval
+		if mdt > 0
+			H.SampleRate = 1/(86400*mdt);
 			fprintf('MKMSEED: guessed sampling rate at %g Hz. Hope it is OK...\n',H.SampleRate);
 		else
 			error('MKMSEED: cannot guess sampling rate from T. Please specify FS argument.');
