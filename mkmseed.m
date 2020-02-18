@@ -20,7 +20,11 @@ function mkmseed(f,d,varargin)
 %	
 %	Final filename will have appended string ".YYYY.DDD" corresponding to year
 %	and ordinal day of origin time (from T0 value). Multiple files may be 
-%	created if time span of data exceeds day limit.
+%	created if time span of data exceeds day limit. Use option 'onefile' to
+%	avoid this behavior.
+%
+%	MKMSEED(...,'onefile') forces a single output file, avoiding automatic
+%	daily split.
 %
 %	MKMSEED(...,EF,RL) specifies encoding format EF and data record length RL
 %	(in bytes). RL must be a power of 2 greater or equal to 256.
@@ -59,7 +63,7 @@ function mkmseed(f,d,varargin)
 %	Author: François Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2011-10-19
-%	Updated: 2018-12-05
+%	Updated: 2020-02-16
 %
 %	Acknowledgments:
 %		Florent Brenguier, Julien Vergoz, Constanza Pardo, Sylvie Barbier.
@@ -71,6 +75,9 @@ function mkmseed(f,d,varargin)
 %		  Instrument Center, http://www.passcal.nmt.edu/
 
 %	History:
+%	[2020-02-16]
+%		- adds an option 'onefile' to avoid daily split output
+%
 %	[2018-12-05]
 %		- allows any t0 (fix a bug when t0(1) = 0)
 %		- uses mode to guess sampling frequency (without FS argument)
@@ -108,7 +115,7 @@ function mkmseed(f,d,varargin)
 %		- accepts void location code (thanks to Julien Vergoz)
 %
 %
-%	Copyright (c) 2016, François Beauducel, covered by BSD License.
+%	Copyright (c) 2020, François Beauducel, covered by BSD License.
 %	All rights reserved.
 %
 %	Redistribution and use in source and binary forms, with or without 
@@ -223,9 +230,9 @@ end
 % may lead to corrupted data... Another option is to set EF(2) to 0, then 
 % original blockette 1000 value is used (from HEADER argument), while data 
 % are still encoded as EF(1). !! For expert only !!
-if nargin > 4 && ~isempty(varargin{3})
+if nargin > 4 && isnumeric(varargin{3}) && ~isempty(varargin{3})
 	ef = varargin{3};
-	if ~isnumeric(ef) || numel(ef) > 2 ...
+	if numel(ef) > 2 ...
 			|| ~ismember(ef(1),[1,3,4,5,10,11,13,14]) ...
 			|| (numel(ef)==2 && ~ismember(ef(2),[0,1,3,4,5,10,11,13,14]))
 		error('Argument EF not valid. See documentation.');
@@ -259,12 +266,15 @@ else
 
 end
 
-if nargin > 5
+if nargin > 5 && isnumeric(varargin{4})
 	rl = varargin{4};
-	if ~isnumeric(rl) || numel(rl) > 1 || rl < 256 || mod(log(rl)/log(2),1) ~=0
+	if numel(rl) > 1 || rl < 256 || mod(log(rl)/log(2),1) ~=0
 		error('Argument RL must be a power of 2, scalar >= 256.');
 	end
 end
+
+% option for single output file (not daily splitted)
+onefile = any(strcmpi(varargin,'onefile'));
 
 % reconstructs the filename base (without date)
 fbase = fullfile(fpath,sprintf('%s.%s.%s.%s', ...
@@ -304,7 +314,7 @@ while n <= length(d)
 	fn = sprintf('%s.%04d.%03d',fbase,tv(1),doy);
 
 	% open a new file
-	if doy ~= doy0
+	if doy ~= doy0 && (doy0 == -1 || ~onefile)
 		if doy0 > 0
 			fclose(fid);
 			fprintf(' done.\n');

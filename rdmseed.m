@@ -97,12 +97,15 @@ function varargout = rdmseed(varargin)
 %	Author: François Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2010-09-17
-%	Updated: 2015-01-05
+%	Updated: 2018-08-09
 %
 %	Acknowledgments:
 %		Ljupco Jordanovski, Jean-Marie Saurel, Mohamed Boubacar, Jonathan Berger,
 %		Shahid Ullah, Wayne Crawford, Constanza Pardo, Sylvie Barbier,
 %		Robert Chase, Arnaud Lemarchand, Alexandre Nercessian.
+%
+%		Special thanks to Martin Mityska who also inspired me with his ingenious
+%		ReadMSEEDFast.m function.
 %
 %	References:
 %		IRIS (2010), SEED Reference Manual: SEED Format Version 2.4, May 2010,
@@ -111,6 +114,11 @@ function varargout = rdmseed(varargin)
 %		Steim J.M. (1994), 'Steim' Compression, Quanterra Inc.
 
 %	History:
+%
+%		[2018-08-09]
+%			- MAJOR CODE UPDATE: now processes the binary data in memory 
+%			  after a global file reading.
+%			- removes all global variables.
 %		[2017-11-21]
 %			- adds option 'nullhead' to bypass null bytes header.
 %		[2015-01-05]
@@ -175,7 +183,7 @@ function varargout = rdmseed(varargin)
 %			  input arguments (like Seismic Handler output files).
 %			- Uses warning() function instead of fprintf().
 %
-%	Copyright (c) 2017, François Beauducel, covered by BSD License.
+%	Copyright (c) 2018, François Beauducel, covered by BSD License.
 %	All rights reserved.
 %
 %	Redistribution and use in source and binary forms, with or without 
@@ -203,9 +211,6 @@ function varargout = rdmseed(varargin)
 if nargin > 6
 	error('Too many input arguments.')
 end
-
-% global variables shared with sub-functions
-global f fid offset le ef wo rl forcebe verbose notc force
 
 % default input arguments
 makeplot = 0;	% make plot flag
@@ -314,8 +319,9 @@ end
 
 i = 1;
 
+% --- main loop that reads data records until the end of the file
 while offset >= 0
-	X(i) = read_data_record;
+	[X(i),offset] = read_data_record(f,fid,offset,le,ef,wo,rl,forcebe,verbose,notc,force);
 	i = i + 1;
 end
 
@@ -450,11 +456,10 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function D = read_data_record
+function [D,offset] = read_data_record(f,fid,offset,le,ef,wo,rl,forcebe,verbose,notc,force)
 % read_data_record uses global variables f, fid, offset, le, ef, wo, rl, 
 %	and verbose. It reads a data record and returns a structure D.
 
-global f fid offset le ef wo rl verbose notc force
 
 fseek(fid,offset,'bof');
 
@@ -471,7 +476,7 @@ D.ChannelFullName = sprintf('%s:%s:%s:%s',deblank(D.NetworkCode), ...
 	deblank(D.ChannelIdentifier));
 
 % Start Time decoding
-[D.RecordStartTime,swapflag] = readbtime;
+[D.RecordStartTime,swapflag] = readbtime(fid,forcebe);
 D.RecordStartTimeISO = sprintf('%4d-%03d %02d:%02d:%07.4f',D.RecordStartTime);
 
 if swapflag
@@ -559,7 +564,7 @@ for i = 1:D.NumberBlockettesFollow
 			% BLOCKETTE 500 = Timing (200 bytes)
 			OffsetNextBlockette = fread(fid,1,'uint16');
 			D.BLOCKETTES.B500.VCOCorrection = fread(fid,1,'float32');
-			D.BLOCKETTES.B500.TimeOfException = readbtime;
+			D.BLOCKETTES.B500.TimeOfException = readbtime(fid,forcebe);
 			D.BLOCKETTES.B500.MicroSec = fread(fid,1,'int8');
 			D.BLOCKETTES.B500.ReceptionQuality = fread(fid,1,'uint8');
 			D.BLOCKETTES.B500.ExceptionCount = fread(fid,1,'uint16');
@@ -960,16 +965,15 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function c = splitfield(s,d)
 % splitfield(S) splits string S of D-character separated field names
+
 C = textscan(s,'%s','Delimiter',d);
 c = C{1};
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [d,swapflag] = readbtime
+function [d,swapflag] = readbtime(fid,forcebe)
 % readbtime reads BTIME structure from current opened file and returns
 %	D = [YEAR,DAY,HOUR,MINUTE,SECONDS]
-
-global fid forcebe
 
 Year		= fread(fid,1,'*uint16');
 DayOfYear	= fread(fid,1,'*uint16');
