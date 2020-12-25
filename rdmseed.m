@@ -97,12 +97,12 @@ function varargout = rdmseed(varargin)
 %	Author: François Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2010-09-17
-%	Updated: 2018-08-09
+%	Updated: 2020-12-25
 %
 %	Acknowledgments:
 %		Ljupco Jordanovski, Jean-Marie Saurel, Mohamed Boubacar, Jonathan Berger,
 %		Shahid Ullah, Wayne Crawford, Constanza Pardo, Sylvie Barbier,
-%		Robert Chase, Arnaud Lemarchand, Alexandre Nercessian.
+%		Robert Chase, Arnaud Lemarchand, Alexandre Nercessian, Sagynbek Orunbaev.
 %
 %		Special thanks to Martin Mityska who also inspired me with his ingenious
 %		ReadMSEEDFast.m function.
@@ -115,6 +115,8 @@ function varargout = rdmseed(varargin)
 
 %	History:
 %
+%		[2020-12-25]
+%			- fixes a bug with little-endian encoding (corrupted data)
 %		[2018-08-09]
 %			- MAJOR CODE UPDATE: now processes the binary data in memory 
 %			  after a global file reading.
@@ -256,7 +258,7 @@ end
 
 if nargin > (2 + nargs)
 	wo = varargin{3};
-	if ~isnumeric(wo) || (wo ~= 0 && wo ~= 1)
+	if ~isnumeric(wo) || ~any(wo==[0,1])
 		error('Argument WORDORDER must be 0 or 1.');
 	end
 end
@@ -321,7 +323,7 @@ i = 1;
 
 % --- main loop that reads data records until the end of the file
 while offset >= 0
-	[X(i),offset] = read_data_record(f,fid,offset,le,ef,wo,rl,forcebe,verbose,notc,force);
+	[X(i),offset,le] = read_data_record(f,fid,offset,le,ef,wo,rl,forcebe,verbose,notc,force);
 	i = i + 1;
 end
 
@@ -456,9 +458,9 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [D,offset] = read_data_record(f,fid,offset,le,ef,wo,rl,forcebe,verbose,notc,force)
-% read_data_record uses global variables f, fid, offset, le, ef, wo, rl, 
-%	and verbose. It reads a data record and returns a structure D.
+function [D,offset,le] = read_data_record(f,fid,offset,le,ef,wo,rl,forcebe,verbose,notc,force)
+% read_data_record reads a data record and returns a structure D and
+% current binary offset of the file.
 
 
 fseek(fid,offset,'bof');
@@ -728,7 +730,7 @@ switch EncodingFormat
 			
 		case 1
 			% STEIM-1: 3 cases following the nibbles
-			ddd = NaN*ones(4,numel(frame32));	% initiates array with NaN
+			ddd = nan(4,numel(frame32));	% initiates array with NaN
 			k = find(nibbles == 1);			% nibble = 1 : four 8-bit differences
 			if ~isempty(k)
 				ddd(1:4,k) = bitsplit(frame32(k),32,8);
@@ -744,7 +746,7 @@ switch EncodingFormat
 
 		case 2	
 			% STEIM-2: 7 cases following the nibbles and dnib
-			ddd = NaN*ones(7,numel(frame32));	% initiates array with NaN
+			ddd = nan(7,numel(frame32));	% initiates array with NaN
 			k = find(nibbles == 1);			% nibble = 1 : four 8-bit differences
 			if ~isempty(k)
 				ddd(1:4,k) = bitsplit(frame32(k),32,8);
@@ -784,7 +786,7 @@ switch EncodingFormat
 			
 		case 3	% *** STEIM-3 DECODING IS ALPHA AND UNTESTED ***
 			% STEIM-3: 7 cases following the nibbles
-			ddd = NaN*ones(9,numel(frame32));	% initiates array with NaN
+			ddd = nan(9,numel(frame32));	% initiates array with NaN
 			k = find(nibbles == 0);				% nibble = 0 : two 16-bit differences
 			if ~isempty(k)
 				ddd(1:2,k) = bitsplit(frame32(k),32,16);
@@ -826,7 +828,7 @@ switch EncodingFormat
 		end
 		
 		% Little-endian coding: needs to swap bytes
-		if ~WordOrder
+		if ~WordOrder % ??? why not xor(~WordOrder,le) here ???
 			ddd = flipud(ddd);
 		end
 		dd = ddd(~isnan(ddd));		% reduces initial array ddd: dd is non-NaN values of ddd

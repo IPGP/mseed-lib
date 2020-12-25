@@ -5,10 +5,12 @@ function mkmseed(f,d,varargin)
 %	compatible format) and sampling rate FS (in Hz). Encoding format will 
 %	depend on D variable class (see below).
 %
-%	MKMSEED(FILENAME,D,T,FS) where T is a time vector of the same length as
-%	data vector D, will create data records of monotonic blocks of samples,
-%	splitting each time the sampling frequency FS is not equal to time  
-%	difference between two successive samples (with a 50% tolerency).
+%	MKMSEED(FILENAME,D,T) or MKMSEED(FILENAME,D,T,FS) where T is a time 
+%	vector of the same length as data vector D, will create data records of
+%	monotonic blocks of samples, splitting each time the sampling frequency
+%	FS is not equal to time  difference between two successive samples 
+%	(with a 50% tolerency). If FS is not specified, the function will guess
+%	it using the most frequent time interval in T.
 %
 %	Network, Station, Channel and Location codes will be extracted from FILENAME
 %	which must respect the format "NN.SSSSS.LC.CCC.T" where:
