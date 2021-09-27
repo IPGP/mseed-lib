@@ -1,14 +1,14 @@
 function mkmseed(f,d,varargin)
 %MKMSEED Write data in miniSEED file format.
-%	MKMSEED(FILENAME,D,T0,FS) writes miniSEED file FILENAME from strictly 
+%	MKMSEED(FILENAME,D,T0,FS) writes miniSEED file FILENAME from strictly
 %	monotonic data vector D, time origin T0 (a scalar in Matlab datenum
-%	compatible format) and sampling rate FS (in Hz). Encoding format will 
+%	compatible format) and sampling rate FS (in Hz). Encoding format will
 %	depend on D variable class (see below).
 %
-%	MKMSEED(FILENAME,D,T) or MKMSEED(FILENAME,D,T,FS) where T is a time 
+%	MKMSEED(FILENAME,D,T) or MKMSEED(FILENAME,D,T,FS) where T is a time
 %	vector of the same length as data vector D, will create data records of
 %	monotonic blocks of samples, splitting each time the sampling frequency
-%	FS is not equal to time  difference between two successive samples 
+%	FS is not equal to time  difference between two successive samples
 %	(with a 50% tolerency). If FS is not specified, the function will guess
 %	it using the most frequent time interval in T.
 %
@@ -19,9 +19,9 @@ function mkmseed(f,d,varargin)
 %		   LC = Location Code (2 char max)
 %		  CCC = Channel identifier (3 char max)
 %		    T = Data type (1 char, optional, default is D)
-%	
+%
 %	Final filename will have appended string ".YYYY.DDD" corresponding to year
-%	and ordinal day of origin time (from T0 value). Multiple files may be 
+%	and ordinal day of origin time (from T0 value). Multiple files may be
 %	created if time span of data exceeds day limit. Use option 'onefile' to
 %	avoid this behavior.
 %
@@ -43,7 +43,7 @@ function mkmseed(f,d,varargin)
 %
 %	MKMSEED(FILENAME,D,T,HEADER) where HEADER is a data structure similar
 %	to the one from RDMSEED function, propagates the header contains into
-%	written data records. HEADER can be of 1xN size, in that case each 
+%	written data records. HEADER can be of 1xN size, in that case each
 %	element will be assigned to each data record, respectively.
 %	Valid fields of HEADER structure are:
 %	           SequenceNumber: 6-char string
@@ -62,10 +62,10 @@ function mkmseed(f,d,varargin)
 %	See also RDMSEED function for miniSEED file reading.
 %
 %
-%	Author: François Beauducel <beauducel@ipgp.fr>
+%	Author: Franï¿½ois Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2011-10-19
-%	Updated: 2020-02-16
+%	Updated: 2021-09-27
 %
 %	Acknowledgments:
 %		Florent Brenguier, Julien Vergoz, Constanza Pardo, Sylvie Barbier.
@@ -77,6 +77,9 @@ function mkmseed(f,d,varargin)
 %		  Instrument Center, http://www.passcal.nmt.edu/
 
 %	History:
+%	[2021-09-27]
+%		- fixes a bug with channel identifier code (thanks to Grzegorz Kwiatek)
+%
 %	[2020-02-16]
 %		- adds an option 'onefile' to avoid daily split output
 %
@@ -85,7 +88,7 @@ function mkmseed(f,d,varargin)
 %		- uses mode to guess sampling frequency (without FS argument)
 %
 %	[2017-05-13]
-%		- fixes a possible problem with LC length and adds validity tests on RF 
+%		- fixes a possible problem with LC length and adds validity tests on RF
 %
 %	[2015-01-26]
 %		- fixes an issue with time sampling in T0,FS mode
@@ -117,34 +120,34 @@ function mkmseed(f,d,varargin)
 %		- accepts void location code (thanks to Julien Vergoz)
 %
 %
-%	Copyright (c) 2020, François Beauducel, covered by BSD License.
+%	Copyright (c) 2020, Franï¿½ois Beauducel, covered by BSD License.
 %	All rights reserved.
 %
-%	Redistribution and use in source and binary forms, with or without 
+%	Redistribution and use in source and binary forms, with or without
 %	modification, are permitted provided that the following conditions are met:
 %
-%	   * Redistributions of source code must retain the above copyright 
+%	   * Redistributions of source code must retain the above copyright
 %	     notice, this list of conditions and the following disclaimer.
-%	   * Redistributions in binary form must reproduce the above copyright 
-%	     notice, this list of conditions and the following disclaimer in 
+%	   * Redistributions in binary form must reproduce the above copyright
+%	     notice, this list of conditions and the following disclaimer in
 %	     the documentation and/or other materials provided with the distribution
-%	                           
-%	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-%	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-%	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-%	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-%	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-%	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-%	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-%	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-%	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-%	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+%
+%	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+%	AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+%	IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+%	ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+%	LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+%	CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+%	SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+%	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+%	CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+%	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 %	POSSIBILITY OF SUCH DAMAGE.
 
 if nargin < 3
 	error('Not enought input arguments.');
 end
-	
+
 % default input arguments
 rl = 2^12;	% Record length
 
@@ -164,7 +167,7 @@ else
 	X.NetworkCode = sprintf('%-2s',upper(cc{1}(1:min(length(cc{1}),2))));
 	X.StationIdentifierCode = sprintf('%-5s',upper(cc{2}(1:min(length(cc{2}),5))));
 	X.LocationIdentifier = sprintf('%-2s',cc{3}(1:min(length(cc{3}),2)));
-	X.ChannelIdentifier = sprintf('%-3s',cc{4}(1:min(length(cc{4}),4)));
+	X.ChannelIdentifier = sprintf('%-3s',cc{4}(1:min(length(cc{4}),3)));
 end
 
 if ~isnumeric(d)
@@ -225,12 +228,12 @@ else
 	m = [0;(dt > (1 + fs_tol)/H(1).SampleRate/86400 | dt < (1 - fs_tol)/H(1).SampleRate/86400)];
 end
 
-% ! IMPORTANT NOTE ON ENCODING FORMAT ARGUMENT ! 
+% ! IMPORTANT NOTE ON ENCODING FORMAT ARGUMENT !
 % For very specific usage (data transform), EF argument accepts a 2-element
 % vector: EF(1) is used to encode the data, and optionaly, EF(2) is used to
-% fill the blockette 1000 header value. These 2 value must be the same or 
-% may lead to corrupted data... Another option is to set EF(2) to 0, then 
-% original blockette 1000 value is used (from HEADER argument), while data 
+% fill the blockette 1000 header value. These 2 value must be the same or
+% may lead to corrupted data... Another option is to set EF(2) to 0, then
+% original blockette 1000 value is used (from HEADER argument), while data
 % are still encoded as EF(1). !! For expert only !!
 if nargin > 4 && isnumeric(varargin{3}) && ~isempty(varargin{3})
 	ef = varargin{3};
@@ -336,10 +339,10 @@ while n <= length(d)
 		k = n:min([n + nbs - 1,length(d),n + find(m(n:end),1)]);
 	end
 	X.data = d(k);
-	
+
 	% index of header information
 	kh = min(r,length(H));
-	
+
 	X.SampleRate = H(kh).SampleRate;
 	X.SequenceNumber = sprintf('%06d',r);
 	if isfield(H,'SequenceNumber')
@@ -366,7 +369,7 @@ while n <= length(d)
 	if numel(ef)==2 && ef(2)==0 && isfield(H(kh),'BLOCKETTES') && isfield(H(kh).BLOCKETTES,'B1000')
 		X.EncodingFormat = H(kh).BLOCKETTES.B1000.EncodingFormat;
 	end
-	
+
 	nn = write_data_record(fid,X,ef,rl);
 	n = k(nn) + 1;
 	r = r + 1;
@@ -440,7 +443,7 @@ case {10,11} % Steim-1/2: a bit more complicated...
 		data(2:16,k) = steim(:,k);
 	end
 	nrem = 0;
-case {13,14} % Geoscope: computes 3 or 4-bit exponent and 12-bit mantissa 
+case {13,14} % Geoscope: computes 3 or 4-bit exponent and 12-bit mantissa
 	gain = min(floor(log(2^11./abs(X.data))/log(2)),16 - (ef(1)==13));
 	mant = X.data.*2.^gain + 2^11;
 	data = uint16(mant + gain*2^12);
