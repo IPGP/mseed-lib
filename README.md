@@ -1,4 +1,4 @@
-# mseed-matlab
+# mseed-lib
 
 The Standard for the Exchange of Earthquake Data (SEED) is an
 international standard format for the exchange of digital seismological
@@ -12,7 +12,7 @@ complement to “Dataless” SEED volumes, exists the “Data-only” volume
 called Mini-SEED (see http://www.iris.edu for further information).
 
 The purpose of these functions is to read and write miniSEED data files
-directly from Matlab, avoiding intermediate format conversion (like SAC
+directly from Matlab/Octave, avoiding intermediate format conversion (like SAC
 or other formats for which many functions exist), having a full control
 on headers and formats.
 
