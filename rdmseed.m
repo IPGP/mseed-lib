@@ -40,6 +40,12 @@ function varargout = rdmseed(varargin)
 %	                     with next block (more than 0.5 sampling period).
 %	            GapTime: time vector of gapped blocks (DATENUM format).
 %
+%	X = RDMSEED(F,...,'simple') returns merged data blocks in a simplified
+%	multidimensional structure with fields:
+%		         t: time vector (DATENUM format)
+%		         d: data vector (double)
+%	          name: stream full name (NET:STA:LOC:CHA)
+%
 %	RDMSEED(...) without output arguments plots the imported signal by 
 %	concatenating all the data records, in one single plot if single channel
 %	is detected, or subplots for multiplexed file (limited to 10 channels).
@@ -62,20 +68,21 @@ function varargout = rdmseed(varargin)
 %	Some instructions for usage of the returned structure:
 %	
 %	- to get concatenated time and data vectors from a single-channel file:
-%		X = rdmseed(f,'plot');
+%		X = rdmseed(f);
 %		t = cat(1,X.t);
 %		d = cat(1,X.d);
+%	  or use the 'simple' option:
+%	    X = rdmseed(f,'simple');
+%	    t = X.t;
+%	    d = X.d;
 %
-%	- to get the list of channels in a multiplexed file:
-%		[X,I] = rdmseed(f);
-%		char(I.ChannelFullName)
-%
-%	- to extract the station component n from a multiplexed file:
-%		[X,I] = rdmseed(f);
-%		k = I(n).XBlockIndex;
-%		plot(cat(1,X(k).t),cat(1,X(k).d))
+%	- to extract single station component from a multiplexed file:
+%		X = rdmseed(f,'simple');
+%		char(X.name) % displays list of channels
+%		n = 1; % selects channel 1 
+%		plot(X(n).t,X(n).d)
 %		datetick('x')
-%		title(I(n).ChannelFullName)
+%		title(X(n).name)
 %
 %	Known encoding formats are the following FDSN codes:
 %		 0: ASCII
@@ -97,7 +104,7 @@ function varargout = rdmseed(varargin)
 %	Author: François Beauducel <beauducel@ipgp.fr>
 %		Institut de Physique du Globe de Paris
 %	Created: 2010-09-17
-%	Updated: 2020-12-25
+%	Updated: 2023-02-01
 %
 %	Acknowledgments:
 %		Ljupco Jordanovski, Jean-Marie Saurel, Mohamed Boubacar, Jonathan Berger,
@@ -115,6 +122,8 @@ function varargout = rdmseed(varargin)
 
 %	History:
 %
+%		[2023-02-01]
+%			- adds new option 'simple' to export simplified structure
 %		[2020-12-25]
 %			- fixes a bug with little-endian encoding (corrupted data)
 %		[2018-08-09]
@@ -185,7 +194,7 @@ function varargout = rdmseed(varargin)
 %			  input arguments (like Seismic Handler output files).
 %			- Uses warning() function instead of fprintf().
 %
-%	Copyright (c) 2018, François Beauducel, covered by BSD License.
+%	Copyright (c) 2023, François Beauducel, covered by BSD License.
 %	All rights reserved.
 %
 %	Redistribution and use in source and binary forms, with or without 
@@ -215,15 +224,16 @@ if nargin > 6
 end
 
 % default input arguments
-makeplot = 0;	% make plot flag
-verbose = 0;	% verbose flag/level 
-forcebe = 0;	% force big-endian
-ef = 10;		% encoding format default
-wo = 1;			% word order default
-rl = 2^12;		% record length default
-force = 0;		% force input argument over blockette 1000 (UNDOCUMENTED)
-notc = 0;		% force no time correction (over ActivityFlags)
-nullhead = 0;	% allow null bytes before header
+simple = false;		% export simple structure
+makeplot = false;	% make plot flag
+verbose = false;	% verbose flag/level 
+forcebe = false;	% force big-endian
+ef = 10;			% encoding format default
+wo = 1;				% word order default
+rl = 2^12;			% record length default
+force = false;		% force input argument over blockette 1000 (UNDOCUMENTED)
+notc = false;		% force no time correction (over ActivityFlags)
+nullhead = false;	% allow null bytes before header
 
 if nargin < 1
 	[filename,pathname] = uigetfile('*','Please select a miniSEED file...');
@@ -239,13 +249,14 @@ end
 if nargin > 1
 	verbose = any(strcmpi(varargin,'v')) + 2*any(strcmpi(varargin,'vv')) ...
 	          + 3*any(strcmpi(varargin,'vvv'));
+	simple = any(strcmpi(varargin,'simple'));
 	makeplot = any(strcmpi(varargin,'plot'));
 	forcebe = any(strcmpi(varargin,'be'));
 	notc = any(strcmpi(varargin,'notc'));
 	force = any(strcmpi(varargin,'force'));
 	nullhead = any(strcmpi(varargin,'nullhead'));
 end
-nargs = (makeplot>0) + (verbose>0) + (forcebe>0) + (notc>0) + (force>0) ...
+nargs = (simple>0) + (makeplot>0) + (verbose>0) + (forcebe>0) + (notc>0) + (force>0) ...
 	 + (nullhead>0);
 
 
@@ -329,12 +340,8 @@ end
 
 fclose(fid);
 
-if nargout > 0
-	varargout{1} = X;
-end
-
 % --- analyses data
-if makeplot || nargout > 1
+if makeplot || nargout > 1 || simple
 
 	% test if the file is multiplexed or a single channel
 	un = unique(cellstr(char(X.ChannelFullName)));
@@ -348,6 +355,20 @@ if makeplot || nargout > 1
 		I(i).OverlapTime = cat(1,X(I(i).OverlapBlockIndex).RecordStartTimeMATLAB);
 		I(i).GapBlockIndex = k(find(I(i).ClockDrift.*cat(1,X(k).NumberSamples).*cat(1,X(k).SampleRate) > .5) + 1);
 		I(i).GapTime = cat(1,X(I(i).GapBlockIndex).RecordStartTimeMATLAB);
+	end
+end
+if nargout > 0
+	if simple
+		channels = cellstr(char(I.ChannelFullName));
+		for n = 1:length(channels)
+			kb = I(n).XBlockIndex;
+			Y(n).t = cat(1,X(kb).t);
+			Y(n).d = cat(1,X(kb).d);
+			Y(n).name = I(n).ChannelFullName;
+		end
+		varargout{1} = Y;
+	else
+		varargout{1} = X;
 	end
 end
 if nargout > 1
